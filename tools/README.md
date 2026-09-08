@@ -9,17 +9,17 @@ in [`scripts/`](../scripts/); reusable code lives in
 support, extraction operations, and report/audit utilities.
 
 This is a source publication containing `configs/`, `scripts/`, `src/`,
-`tests/`, `tools/`, and the main experiment entries. Datasets, slide images,
+`tests/`, `tools/`, the main experiment entries, and project setup files.
+Datasets, slide images,
 feature stores, trained checkpoints, generated outputs, review packets,
 reports, and archival directories are not distributed here. Existing data
 locations and experiment identifiers in configurations must be matched to the
 external resources required by each command.
 
-Root setup files (`pyproject.toml`, `uv.lock`, `Makefile`, and
-`.python-version`) are outside this publication's requested scope. This tree
-therefore assumes an existing project environment. Campaigns that record
-dependency metadata in source snapshots also require the matching project and
-lock files before preparation can succeed.
+Root setup files include `pyproject.toml`, `uv.lock`, `Makefile`, and
+`.python-version`. See the [setup instructions](../README.md#environment)
+for installing the locked environment. Campaign source snapshots include the
+project and lock files when recording dependency metadata.
 
 Frozen receipts and source snapshots require their original artifacts and
 original source bytes. The renamed publication does not replace a historical

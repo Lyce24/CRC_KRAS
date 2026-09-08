@@ -1,0 +1,51 @@
+# Pre-commit hooks for OceanPath
+# Install: pre-commit install
+# Run all: pre-commit run --all-files
+# Update:  pre-commit autoupdate
+
+repos:
+  # ── Standard file hygiene ────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=500]
+        exclude: ^uv\.lock$
+      - id: check-merge-conflict
+      - id: debug-statements           # no pdb left in code
+      - id: check-ast                   # valid Python syntax
+      - id: mixed-line-ending
+
+  # ── YAML lint (catches Hydra config errors) ──────────────────────────
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.38.0
+    hooks:
+      - id: yamllint
+        args: [-d, "{extends: relaxed, rules: {line-length: {max: 120}}}"]
+        files: \.(yaml|yml)$
+        exclude: uv\.lock
+
+  # ── Python correctness + import order ────────────────────────────────
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.22
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # Mypy for stable contracts is blocking through `make typecheck` in CI.
+  # A hook can be added once full-tree typing is practical without installing
+  # the entire ML dependency stack into a separate pre-commit environment.
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.19.1
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [torch, numpy, pandas-stubs]
+  #       args: [--config-file=pyproject.toml]
+  #       pass_filenames: false

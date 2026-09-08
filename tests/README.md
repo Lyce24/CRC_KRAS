@@ -18,9 +18,9 @@ Frozen receipts and source snapshots must be checked against their original
 artifacts and source bytes. Archived tests under `draft/legacy_tests/` are not
 included in this publication.
 
-Root dependency metadata (`pyproject.toml` and `uv.lock`) is also excluded.
-The environment-verification test and several campaign source-snapshot tests
-require those files. Some artifact-backed tests read preregistrations under
+Root dependency metadata (`pyproject.toml` and `uv.lock`) is included for
+environment verification and campaign source snapshots; see the
+[environment setup](../README.md#environment). Some artifact-backed tests read preregistrations under
 `reports/`, frozen splits under `outputs/`, or sealed runs on configured data
 volumes; they are not standalone tests of this source tree. Extraction test
 collection additionally requires the optional `shapely` dependency.

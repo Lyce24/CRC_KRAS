@@ -1,6 +1,13 @@
-# Publish only the requested source directories and canonical experiment entries.
+# Publish source, canonical experiment entries, and reproducible project setup.
 /*
 !/.gitignore
+!/.github/
+!/.pre-commit-config.yaml
+!/.python-version
+!/Makefile
+!/README.md
+!/pyproject.toml
+!/uv.lock
 !/configs/
 !/scripts/
 !/src/
@@ -21,6 +28,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .uv-cache/
+.uv-tools/
 *.egg-info/
 wandb/
 .DS_Store

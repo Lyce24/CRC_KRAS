@@ -1,0 +1,148 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "oceanpath"
+version = "0.1.0"
+description = "A reproducible supervised MIL pipeline for computational pathology"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "h5py>=3.15.1",
+    "hydra-core>=1.3.2",
+    "lightning>=2.6.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.2.6",
+    "nystrom-attention>=0.0.14",
+    "omegaconf>=2.3.0",
+    "onnx>=1.20.1",
+    "onnxruntime<1.24",
+    "onnxscript>=0.7.1",
+    "pandas>=2.3.3",
+    "pyarrow>=23.0.1",
+    "scikit-learn>=1.7.2",
+    "torch>=2.10.0",
+    "torchmetrics>=1.8.2",
+    "tqdm>=4.67.3",
+]
+
+[project.optional-dependencies]
+# E3b's montage step reads tiles back out of the WSIs at their recorded level-0
+# coordinates; nothing else in the study opens a slide, so the reader stays
+# optional and every other E3b step runs without it.
+atlas = [
+    "openslide-python>=1.4.3",
+]
+# Undeclared until now, but genuinely required: tools/results_workbook.py imports
+# openpyxl at module level, and tools/*_umap_*.py import umap-learn. They were
+# present ad hoc in the working environment, so a plain `uv sync` silently
+# removed them the first time an extra was added.
+reporting = [
+    "openpyxl>=3.1.5",
+    "umap-learn>=0.5.12",
+]
+serve = [
+    "fastapi>=0.129.0",
+    "uvicorn[standard]>=0.40.0",
+]
+track = [
+    "wandb>=0.25.0",
+]
+
+[tool.uv.sources]
+conch = { git = "https://github.com/Mahmoodlab/CONCH.git", rev = "141cc09c7d4ff33d8eda562bd75169b457f71a62" }
+opensdpc = { git = "https://github.com/WonderLandxD/opensdpc", rev = "a07579eedde1dffddf8fa712ef236b97ca8cfc55" }
+trident = { git = "https://github.com/mahmoodlab/TRIDENT", rev = "2736579b1c5049b0051204befc17e9ae2a8fce97" }
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.12.0",
+]
+extract = [
+    "conch",
+    "huggingface-hub>=1.4.1",
+    "opensdpc",
+    "trident",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/oceanpath"]
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Mypy — static type checking
+# ═════════════════════════════════════════════════════════════════════════════
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false       # too strict for research code initially
+check_untyped_defs = true           # but DO check bodies of untyped functions
+ignore_missing_imports = true        # third-party stubs often missing
+show_error_codes = true
+pretty = true
+
+[[tool.mypy.overrides]]
+module = "oceanpath.models.*"
+disallow_untyped_defs = true         # strict typing for model interfaces
+
+[[tool.mypy.overrides]]
+module = "oceanpath.eval.*"
+disallow_untyped_defs = true         # strict typing for evaluation
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Pytest
+# ═════════════════════════════════════════════════════════════════════════════
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "slow: marks tests that take >10s (deselect with '-m \"not slow\"')",
+    "gpu: marks tests that require CUDA",
+    "integration: marks tests that need external resources (features, models)",
+]
+filterwarnings = [
+    "ignore::UserWarning:umap",
+    "ignore::DeprecationWarning",
+]
+
+# ═════════════════════════════════════════════════════════════════════════════
+# Coverage
+# ═════════════════════════════════════════════════════════════════════════════
+
+[tool.coverage.run]
+source = ["src/oceanpath"]
+omit = [
+    "*/serving/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ ==",
+    "raise NotImplementedError",
+]
+show_missing = true
+skip_empty = true
+fail_under = 30
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+# One policy for the entire repository. Keeping a weaker "legacy" tier makes
+# project branches inherit ambiguous quality rules.
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
