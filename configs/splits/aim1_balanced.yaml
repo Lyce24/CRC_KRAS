@@ -1,0 +1,47 @@
+# Aim 1 — the frozen multi-marginal balanced five-fold layout (§4.4).
+#
+# The whole layout lives in the manifest and is adopted, not generated:
+#
+#   k_fold        outer fold 0..4 per slide (patient-grouped)
+#   val_fold_i    1 for slides in the early-stopping carve-out of the
+#                 iteration whose outer test fold is i
+#
+# Both were assigned by oceanpath.aim1.balance, which places patients greedily
+# to keep KRAS status, subcohort, colon/rectum, stage, native-MPP bin,
+# technical class, and slides-per-patient simultaneously close to their
+# population proportions in every fold, then improves the assignment with a
+# deterministic swap search. Nothing is random, so the layout is frozen before
+# training and reproducible from the manifest alone.
+#
+# Per outer fold i:
+#   test  = fold i          (never seen in training or checkpoint selection)
+#   val   = val_fold_i == 1 (early stopping ONLY; 15% of the training pool)
+#   train = the rest
+#
+# 1C-R uses the SAME columns filtered to its restricted rows — never re-drawn.
+
+scheme: predefined_oof_kfold
+name: aim1_balanced5
+
+fold_column: k_fold
+
+label_column: ${data.label_columns.0}
+group_column: ${data.patient_id_column}
+site_column: null
+
+# A patient's slides must live in one fold and on one side of the train/val
+# boundary; the scheme rejects any layout that violates it.
+allow_group_overlap: false
+
+# Must equal the number of CV folds in the column — the trainer plans its fold
+# loop from this value. seed is unused: nothing here is drawn.
+n_folds: 5
+seed: 42
+
+# ── Not used by this scheme ──────────────────────────────────────────────────
+test_filter: null
+val_filter: null
+train_ratio: null
+val_ratio: null
+test_ratio: null
+n_repeats: null

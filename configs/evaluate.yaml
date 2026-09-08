@@ -1,0 +1,58 @@
+# ── Root config for: scripts/evaluate.py ───────────────────────────────────────
+#
+# Shares the SAME config groups as train.yaml so all paths resolve identically.
+# This means you can swap data/encoder/splits and evaluate.py will find the
+# correct feature_h5_dir, splits_dir, csv_path, patient_id_column automatically.
+#
+# Usage:
+#   # Evaluate the training run that matches this config combination
+#   python scripts/evaluate.py platform=local data=blca encoder=univ1 splits=oof_kfold5 model=abmil
+#
+#   # Override bootstrap settings
+#   python scripts/evaluate.py ... eval.n_bootstrap=5000
+#
+#   # Point to a specific training run (overrides exp_name derivation)
+#   python scripts/evaluate.py ... train_dir=/explicit/path/to/train/output
+#
+#   # Skip inference (evaluate existing predictions only)
+#   python scripts/evaluate.py ... eval.skip_inference=true
+#
+#   # Custom class names for confusion matrix labels
+#   python scripts/evaluate.py ... eval.class_names=[benign,low_grade,high_grade]
+
+defaults:
+  - platform: local
+  - runtime: default
+  - data: aim1
+  - encoder: univ1
+  - extraction: default
+  - splits: oof_kfold5
+  - model: abmil
+  - training: default
+  - experiment: supervised
+  - eval: default
+  - _self_
+
+# ── Experiment naming (SAME formula as train.yaml) ────────────────────────────
+# This ensures train_dir resolves to the same directory that train.py created.
+exp_name: ${experiment.name}
+
+# ── Derived paths ─────────────────────────────────────────────────────────────
+# train_dir is auto-derived from the same convention as train.py.
+# Override with an explicit path if your run has a non-standard name.
+train_dir: null
+
+# eval_dir defaults to train_dir/eval/ — override for separate output location.
+eval_dir: null
+
+# ── W&B logging ───────────────────────────────────────────────────────────────
+wandb:
+  enabled: false                 # opt in explicitly; evaluation is local by default
+  project: oceanpath_v2
+  entity: null
+  group: ${exp_name}
+  offline: false                 # when enabled, log locally without network
+
+# ── Pipeline flags ────────────────────────────────────────────────────────────
+dry_run: false
+verbose: false

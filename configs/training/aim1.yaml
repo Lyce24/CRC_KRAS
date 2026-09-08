@@ -1,0 +1,80 @@
+# ── Aim 1 — training profile (Aim1_Setup.md §4.2) ────────────────────────────
+#
+# Inherits the standard protocol (configs/training/default.yaml, 2026-08-18)
+# and overrides only what is study-specific. Everything not listed here —
+# max_epochs 20, min_epoch_before_stop 10, warmup 0, patience 5, unweighted
+# patient-level validation loss as the stopping AND checkpoint criterion,
+# AdamW(0.9, 0.999) eps 1e-8, cosine to peak/100, batch 1, accum 1, clip 1.0 —
+# comes from the standard and must not be re-stated here.
+#
+# 1A and 1C-R train with this identical profile; only the manifest rows differ.
+# Retuning either would break the paired comparison that 1C exists for.
+
+defaults:
+  - default
+
+# ── Optimization (lr / weight_decay are the ONLY tuned axes) ─────────────────
+# Frozen by the phase-2b two-direction transfer search; until that completes
+# these are the incumbent values.
+lr: 1e-4
+weight_decay: 1e-5
+
+# ── Loss (§4.2): single-logit BCE ────────────────────────────────────────────
+# Unweighted in the class sense, per the standard protocol. The per-slide
+# patient weight is a different correction and stays on: it spreads one unit of
+# weight across a patient's slides so a multi-block patient cannot outvote a
+# single-slide one (§4.3). In development only 6 of 909 patients have more than
+# one slide, so it is applied for correctness rather than for effect.
+loss_type: bce
+training_class_weighted_loss: false
+validation_loss_weighted: false
+sample_weight_column: slide_weight
+
+# ── Bags ─────────────────────────────────────────────────────────────────────
+# FULL BAGS everywhere — no cap, in training or evaluation. Every tissue patch
+# of every slide is seen each epoch (mean ~11.9k tiles/slide, max 36,641), so
+# the stochastic-subsample regularization that a cap provides is deliberately
+# given up in exchange for the model seeing the whole specimen.
+dataset_max_instances: null
+eval_full_bags: true
+
+# Packed FP16 memmap for UNI-v1. Training is dataloader-bound on per-slide H5
+# reads at these bag sizes (GPU sat at ~26%), and the pack removes h5py decode
+# from the hot path.
+packed_dir: /mnt/wsl/oceanpath-hot/features/colon_stream/20x_256px_0px_overlap_mpp0.5/packed_uni_v1
+# The source check is a hash over the WHOLE feature directory, so it trips on
+# any churn there — including the encoder watcher re-encoding CPTAC, which no
+# Aim-1 development slide depends on. Disabled deliberately, against direct
+# verification rather than assumption:
+#   - all 915 development slides are present in the pack
+#   - sampled development slides match the live H5 exactly in shape, and to
+#     within 0.0039 absolute (0.32% of a typical element) — pure fp16 rounding
+#   - zero development slides have been rewritten by the watcher; the 63 recent
+#     writes are all CPTAC
+#   - the watcher's re-encodes are bit-identical to the originals anyway
+# Re-enable the check (and rebuild the pack) once encoding is idle.
+verify_packed_source: false
+
+# Small-class rule: an inner-validation split with fewer than this many
+# positive patients cannot support the criterion, and the fold would fall back
+# to a fixed epoch budget. Every Aim-1 fold holds 42 mutant patients, so this
+# cannot fire; it stays configured so a mis-specified rerun fails loudly.
+es_min_val_positives: 8
+fixed_epoch_budget: null
+
+# ── Artifacts ────────────────────────────────────────────────────────────────
+# The REPORTED predictor is the five fold models averaged as a mean logit;
+# phase 4 reads those checkpoints directly. The refit trains once on all
+# development patients (fixed epoch budget, no validation set, so no model
+# selection) and is a deployment/sensitivity artifact reported alongside —
+# never promoted to the headline. best_fold is an unavoidable byproduct of
+# run_finalization's API and nothing downstream reads it.
+skip_finalize: false
+final_strategies:
+  - best_fold
+  - refit
+refit_epoch_rule: p75
+save_last: true
+collect_embeddings: false
+
+seed: 42

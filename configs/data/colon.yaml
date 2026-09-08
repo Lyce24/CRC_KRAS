@@ -1,0 +1,48 @@
+# Colon extraction data profile.
+#
+# The production WSI selection is intentionally external: create one canonical
+# `wsi,mpp` CSV only after slide repair/download QC is frozen, then provide it
+# through `data.custom_list_of_wsis`.
+
+name: colon
+
+slide_dir: ${platform.slide_root}/colon
+
+# Downstream splitting/training uses CSV, not XLSX. Build this cohort-combined
+# export only from the three official workbooks in the manifest root:
+# TCGA_COAD_READ_clinical_by_slide.xlsx, the reconciled SurGen-1020 workbook,
+# and RIH_clinical_reconciliation.xlsx. Archived files under legacy/ are never
+# inventory or label inputs.
+csv_path: ${platform.project_root}/manifests/colon/colon_official_clinical_by_slide.csv
+
+feature_job_dir: ${platform.feature_root}/colon_stream
+feature_h5_dir: ${data.feature_job_dir}/${extraction.coords_subdir}/${encoder.features_subdir}
+
+# Required for extraction. Each row must be `wsi,mpp`, relative to slide_dir.
+custom_list_of_wsis: null
+
+# No outcome is silently selected. Override label_columns/num_classes/class_names
+# after choosing one task from the combined label workbook.
+label_columns: []
+patient_id_column: Patient_ID
+filename_column: Slide_ID
+num_classes: null
+class_names: []
+
+available_label_columns:
+  - Binary TNM Stage
+  - Binary Stage T
+  - 3-class Stage T
+  - Binary Stage N
+  - Stage M
+  - MSI
+  - KRAS
+  - NRAS
+  - BRAF
+  - Vital Status
+  - died_within_5_years
+
+wsi_extensions:
+  - .svs
+  - .tif
+  - .tiff

@@ -1,0 +1,60 @@
+# ── KRAS allele study — frozen training recipe (Experimental_Setup.md §6.3–6.4)
+#
+# Every experiment (P1/S1/S2/X1/B1/B2/M1–M3) trains with this profile; only
+# the manifest/label partition differs. lr / weight_decay / model.dropout are
+# frozen ONCE by phase 4 (8-configuration grid on P1's inner-validation
+# splits) and then reused unchanged by every other experiment.
+
+defaults:
+  - default
+
+# ── Optimization (§6.4: AdamW, cosine decay, max 40 epochs) ───────────────────
+lr: 1e-4                       # phase-4 grid axis {1e-4, 3e-5}; frozen winner goes here
+weight_decay: 1e-2             # phase-4 grid axis {1e-2, 1e-4}
+lr_scheduler: cosine
+warmup_epochs: 0
+max_epochs: 40
+batch_size: 1
+
+# ── Loss (§6.3): class-weighted BCE on a single logit ─────────────────────────
+# Weights are inverse-prevalence, computed on each TRAINING FOLD only.
+# B2 (4-way softmax) overrides loss_type=ce; weighting logic is shared.
+loss_type: bce
+auto_class_weights: inverse_prevalence
+class_weighted_sampling: false  # imbalance lives in the loss, not the sampler
+
+# ── Bags (§6.3): train subsamples ≤4096 tiles/slide, resampled every epoch;
+#    ALL evaluation (inner-val, outer-test, external) uses full bags. ─────────
+dataset_max_instances: 4096
+eval_full_bags: true
+
+# ── Early stopping (§6.4): inner-validation PATIENT AUROC, patience 8 ─────────
+monitor_metric: val/patient_auroc
+monitor_mode: max
+early_stopping_patience: 8
+early_stopping_min_delta: 0.0
+
+# Pre-registered small-class rule: an inner-validation split with < 8 positive
+# patients disables early stopping for that fold; the fold then trains for
+# training.fixed_epoch_budget epochs (P1's median best-epoch — phase 5 fills
+# this in) and deploys its FINAL epoch. The substitution is recorded in
+# fold_metrics.json.
+es_min_val_positives: 8
+fixed_epoch_budget: null
+
+# ── Pins that hold this FROZEN recipe steady against later default changes ──
+# The 2026-08-18 standard protocol introduced min_epoch_before_stop=10 and a
+# relative cosine floor (peak/100). Both are pinned back to this study's
+# original behaviour so a re-run reproduces the frozen artifacts exactly.
+min_epoch_before_stop: 0       # this study stops as soon as patience runs out
+final_lr_fraction: 0.001       # eta_min = 1e-4 * 1e-3 = 1e-7, the old absolute floor
+
+# ── Artifacts ─────────────────────────────────────────────────────────────────
+# The frozen predictor is the 15-model ensemble (5 folds x 3 seeds, mean
+# logit). NO refit on full DEV (§6.4) and no best-fold selection — phases 6/7
+# read the fold checkpoints directly, so finalization is skipped entirely.
+skip_finalize: true
+save_last: true
+collect_embeddings: false
+
+seed: 42                       # phase 5 overrides per seed-run (42 / 43 / 44)

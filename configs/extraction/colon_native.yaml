@@ -1,0 +1,32 @@
+# Colon extraction with each patch encoder's native field of view.
+#
+# UNI v1 resolves `${encoder.patch_size}` to 256 pixels (128 microns at
+# 0.5 um/px).  CONCH v1.5 resolves it to 512 pixels (256 microns).  The two
+# coordinate grids intentionally live in different directories and must never
+# share a cache.
+
+defaults:
+  - default
+  - _self_
+
+mag: 20
+target_mpp: 0.5
+patch_size: ${encoder.patch_size}
+overlap: 0
+
+# Preserve HEST-detected lumina/background holes as non-tissue. Artifact
+# refinement is intentionally disabled for the production colon contract.
+remove_holes: true
+remove_artifacts: false
+remove_penmarks: false
+
+# One physical tissue rule and one reader are used for every cohort.  A patch
+# is retained when at least half of its physical field of view is tissue.
+min_tissue_proportion: 0.5
+reader_type: openslide
+search_nested: false
+
+# Safe unattended A5000 starting points. The streaming watcher can reduce a
+# stage automatically after CUDA OOM and records the effective batch size.
+seg_batch_size: 16
+feat_batch_size: ${encoder.feat_batch_size}

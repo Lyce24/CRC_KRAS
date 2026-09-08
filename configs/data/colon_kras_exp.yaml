@@ -1,0 +1,45 @@
+# KRAS allele study — one experiment's development manifest (§4.2 registry).
+#
+# Parameterized over the experiment id: select with
+#     data=colon_kras_exp data.kras_exp=p1        (G12D vs other-mutant)
+#     data=colon_kras_exp data.kras_exp=b2 data.num_classes=4
+#
+# Manifests are built by phase3_make_splits.py dev-manifests from
+# kras_final.csv through oceanpath.kras.registry — the label rules live in
+# code (part of the freeze), never in this file. Splits are NOT generated on
+# these manifests: phase 3 derives each experiment's split directory by
+# subsetting the shared master assignment, so all experiments share identical
+# patient folds (paired comparisons, §6.4).
+
+name: colon_kras_${data.kras_exp}
+
+# Experiment id from oceanpath.kras.registry (p1, s1, s2, x1, b1, b2, m1, m2, m3).
+kras_exp: p1
+
+slide_dir: ${platform.slide_root}/colon
+
+csv_path: ${platform.project_root}/manifests/colon/crc_kras_dev_${data.kras_exp}.csv
+
+feature_job_dir: ${platform.feature_root}/colon_stream
+feature_h5_dir: ${data.feature_job_dir}/${extraction.coords_subdir}/${encoder.features_subdir}
+
+custom_list_of_wsis: null
+
+# Every experiment manifest encodes its task in a single target_label column
+# (0/1 for the binary models; 0..3 for B2).
+label_columns:
+  - target_label
+patient_id_column: patient_id
+filename_column: slide_id
+
+# B2 overrides: data.num_classes=4 (class order G12D/G12V/G13D/other is fixed
+# by oceanpath.kras.labels.B2_CLASS_NAMES).
+num_classes: 2
+class_names:
+  - negative
+  - positive
+
+wsi_extensions:
+  - .svs
+  - .tif
+  - .tiff

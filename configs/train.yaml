@@ -1,0 +1,42 @@
+# ── Root config for: scripts/train.py / phase 5 ``train`` ────────────────────
+#
+# Usage:
+#   python scripts/train.py platform=local data=blca encoder=univ1 splits=oof_kfold5 model=abmil
+#   python tools/study_train.py hydra-train platform=colon_workstation data=aim1 data.aim1_model=e0 encoder=univ1 splits=aim1_balanced model=abmil training=aim1
+#   python scripts/train.py ... training.max_epochs=50 training.lr=1e-4
+
+defaults:
+  - platform: local
+  - runtime: default
+  - data: aim1
+  - encoder: univ1
+  - extraction: default
+  - splits: oof_kfold5
+  - model: abmil
+  - training: default
+  - experiment: supervised
+  - _self_
+
+# ── Experiment naming ─────────────────────────────────────────────────────────
+exp_name: ${experiment.name}
+
+# null uses FoundationPaths' semantic-fingerprint layout. Set an explicit path
+# only when resuming/migrating a deliberately named run.
+train_dir: null
+
+# ── Pipeline flags ────────────────────────────────────────────────────────────
+dry_run: false
+verbose: false
+
+# ── W&B logging ───────────────────────────────────────────────────────────────
+wandb:
+  enabled: false                 # opt in explicitly; safe for CI/HPC by default
+  project: oceanpath_v2
+  entity: null                   # null = default entity
+  group: ${exp_name}
+  tags:
+    - ${data.name}
+    - ${encoder.name}
+    - ${model.arch}
+    - ${splits.scheme}
+  offline: false                 # when enabled, log locally without network

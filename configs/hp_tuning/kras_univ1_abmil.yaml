@@ -1,0 +1,59 @@
+# ── HP-tuning profile: UNIv1 + ABMIL search on P1 (G12D vs other-mutant) ─────
+# Consumed by draft/kras_allele_prereg/phase4_hyperparameter_tuning.py (archived).
+#
+# AMENDMENT 2 (2026-08-14, study owner): expanded search — "spend more time to
+# find the right hyperparameters", P1 only. Two stages:
+#
+#   Stage A (screening, 3 folds, seed 42): the 6 original cells plus 10 cells
+#   targeting the observed failure mode (instant overfit at lr 1e-4, best
+#   epoch 3; wd inert between 1e-4 and 1e-2): lower lr (1e-5), genuinely
+#   strong wd (1e-1), strong dropout (0.75), model CAPACITY (embed 256/128
+#   with attention scaled to embed/2), bag-level regularization (bag 1024,
+#   instance dropout 0.25), and a class-weighting ablation (cw null — the
+#   recipe default is inverse-prevalence weighted BCE; this cell confirms the
+#   weighting helps rather than assumes it).
+#
+#   Stage B (depth): top configs re-run on all 5 folds x seeds {42, 43}
+#   (phase4 run --configs <finalists> --folds 5 --seeds 42 43); the winner is
+#   frozen for P1 from the depth-stage inner-val mean.
+#
+# Selection remains inner-validation-only (patient AUROC) at every stage, so
+# no outer fold is ever consulted and P1's OOF estimate stays selection-free.
+#
+# Quote values: they are used verbatim as hydra overrides and in run
+# directory names.
+
+description: UNIv1 + ABMIL expanded two-stage search on P1 (amendment 2)
+
+# Extra hydra overrides applied to EVERY run of this profile. §6.3
+# architecture defaults: projection 1024→512, gated attention hidden 256;
+# capacity cells override embed/attn per cell (cell overrides win).
+overrides:
+  - encoder=univ1
+  - model.embed_dim=512
+  - model.attn_dim=256
+
+grid:
+  # ── original budget-6 cells (stage A part 1; completed runs are reused) ──
+  - {lr: "1e-4", wd: "1e-2", dropout: "0.25"}
+  - {lr: "1e-4", wd: "1e-4", dropout: "0.25"}
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.25"}
+  - {lr: "3e-5", wd: "1e-4", dropout: "0.25"}
+  - {lr: "1e-4", wd: "1e-2", dropout: "0.5"}
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.5"}
+  # ── stage A part 2: lower lr ─────────────────────────────────────────────
+  - {lr: "1e-5", wd: "1e-2", dropout: "0.25"}
+  # ── genuinely strong weight decay at the promising lr ────────────────────
+  - {lr: "3e-5", wd: "1e-1", dropout: "0.25"}
+  - {lr: "3e-5", wd: "1e-1", dropout: "0.5"}
+  # ── strong dropout ───────────────────────────────────────────────────────
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.75"}
+  # ── capacity: smaller trunk for 247 training bags ────────────────────────
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.25", embed: "256", attn: "128"}
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.5", embed: "256", attn: "128"}
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.25", embed: "128", attn: "64"}
+  # ── bag-level regularization ─────────────────────────────────────────────
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.25", bag: "1024"}
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.25", inst_do: "0.25"}
+  # ── class-weighting ablation (recipe default is inverse_prevalence) ──────
+  - {lr: "3e-5", wd: "1e-2", dropout: "0.25", cw: "null"}

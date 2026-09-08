@@ -1,0 +1,44 @@
+# ── Splits: 5-fold OOF cross-validation with early-stopping validation ────────
+#
+# PROJECT DEFAULT. Classic OOF k-fold, NOT nested CV. Per fold i:
+#   test  = fold i (outer test, never touched during training)
+#   val   = val_ratio of the remaining folds' groups — early stopping /
+#           checkpoint selection ONLY (stratified group split, seed+1000+i)
+#   train = the rest
+# Fold assignment and every val carve-out are stratified at the group
+# (patient) level on label_column and frozen into splits.parquet
+# (columns: fold, val_fold_0..k-1). Pooled OOF predictions = concatenated
+# outer-test folds; training reports per-fold test mean ± SD plus pooled
+# OOF metrics.
+
+scheme: oof_kfold
+name: oofk${splits.n_folds}_seed${splits.seed}_es15  # output identity follows overrides
+
+n_folds: 5
+seed: 42
+
+# ── Label column for stratification ──────────────────────────────────────────
+# Must exist in the CSV. Override with a composite column (e.g. label x cohort)
+# to stratify on several factors at once.
+label_column: ${data.label_columns.0}
+
+# ── Patient grouping ─────────────────────────────────────────────────────────
+# If the CSV has a patient_id column, set this to prevent leakage.
+group_column: ${data.patient_id_column}
+
+# ── Site/scanner balancing (optional) ────────────────────────────────────────
+site_column: null
+
+# ── Custom test set filter (not used) ────────────────────────────────────────
+test_filter: null
+val_filter: null
+
+# ── Ratios ───────────────────────────────────────────────────────────────────
+train_ratio: null
+# Fraction of the k-1 training folds carved out (patient-level, stratified)
+# as the early-stopping validation split.
+val_ratio: 0.15
+test_ratio: null
+
+# ── Monte Carlo settings (not used) ──────────────────────────────────────────
+n_repeats: null

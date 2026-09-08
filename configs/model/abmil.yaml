@@ -1,0 +1,20 @@
+# ── Model: ABMIL (Attention-Based MIL) ────────────────────────────────────────
+# Gated attention pooling over patch embeddings.
+
+name: abmil
+arch: abmil
+
+# ── Architecture ──────────────────────────────────────────────────────────────
+embed_dim: 512
+num_fc_layers: 1
+attn_dim: 384
+gate: true
+dropout: 0.25          # attention-net dropout (a 1-layer patch_embed has none)
+
+# ── Optimization ──────────────────────────────────────────────────────────────
+gradient_checkpointing: false    # trades compute for memory (useful for large bags)
+
+# Dropout on the RAW encoder features, before the 1024 -> embed_dim projection.
+# Distinct from `dropout`, which regularizes the attention branches. 0.0 is the
+# historical behaviour; the Aim-1 recipe sets 0.10.
+input_dropout: 0.0

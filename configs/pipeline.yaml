@@ -1,0 +1,50 @@
+# ── Root config for: scripts/pipeline.py ─────────────────────────────────────
+#
+# Unified DAG runner for the supervised end-to-end pipeline.
+#
+# Usage:
+#   # Supervised full pipeline
+#   python scripts/pipeline.py pipeline_profile=supervised \
+#       platform=local data=blca encoder=univ1 model=abmil
+#
+#   # Render DAG only
+#   python scripts/pipeline.py ... pipeline.dry_run=true
+#
+#   # Run up to train stage only
+#   python scripts/pipeline.py ... pipeline.target=train_model
+
+defaults:
+  - pipeline_profile: supervised
+  - platform: local
+  - runtime: default
+  - data: aim1
+  - encoder: univ1
+  - extraction: default
+  - splits: oof_kfold5
+  - model: abmil
+  - training: default
+  - experiment: supervised
+  - eval: default
+  - export: default
+  - _self_
+
+# ── Derived experiment names/paths (from experiment profile) ─────────────────
+exp_name: ${experiment.name}
+train_dir: null
+eval_dir: null
+
+# ── Pipeline runner options ───────────────────────────────────────────────────
+pipeline:
+  mode: ${pipeline_profile.mode}          # supervised
+  target: ${pipeline_profile.target}      # export_model or an intermediate stage
+  dry_run: false                          # validate DAG + freshness only
+  force: false                            # force stage execution even if fresh
+  show_dag: true
+  include_fingerprint: true
+  dag_output_path: null                   # e.g. outputs/dag/supervised.mmd
+  print_stage_commands: true
+  python_exe: python
+  stage_timeout_sec: null
+
+# ── Global flags ──────────────────────────────────────────────────────────────
+verbose: false

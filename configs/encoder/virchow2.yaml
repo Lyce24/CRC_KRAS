@@ -1,0 +1,14 @@
+# Virchow v2 patch encoder. TRIDENT id: virchow2. The production stream uses
+# the locally pinned official Hub checkpoint declared in workflows/streaming.py.
+name: virchow2
+type: patch
+feature_dim: 2560
+checkpoint_path: null
+family: vit_huge_patch14_224
+source: paige-ai/Virchow2
+adapter: trident
+mag: 20
+patch_size: 224
+feat_batch_size: 8
+
+features_subdir: features_${encoder.name}

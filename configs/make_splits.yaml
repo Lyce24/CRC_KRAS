@@ -1,0 +1,24 @@
+# ── Root config for: scripts/make_splits.py / phase 3 ``splits`` ─────────────
+#
+# Usage:
+#   python scripts/make_splits.py platform=local data=blca splits=oof_kfold5
+#   python tools/phase2_manifests_splits.py   # aim1 frozen manifests + balanced folds
+#   python scripts/make_splits.py platform=local data=blca splits=blca_custom
+#   python scripts/make_splits.py platform=local data=blca splits=oof_kfold5 splits.seed=123
+
+defaults:
+  - platform: local
+  - runtime: default
+  - data: aim1
+  - encoder: univ1
+  - extraction: default
+  - splits: oof_kfold5
+  - _self_
+
+# ── Pipeline flags ────────────────────────────────────────────────────────────
+dry_run: false          # validate CSV + report stats, don't write splits
+force: false            # overwrite existing splits even if they exist
+verbose: false
+
+# ── Optional: verify H5s exist for every slide in the manifest ────────────────
+verify_features: false  # if true, checks that {feature_h5_dir}/{slide_id}.h5 exists

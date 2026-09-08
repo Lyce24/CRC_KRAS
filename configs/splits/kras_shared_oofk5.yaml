@@ -1,0 +1,43 @@
+# KRAS allele study — the shared fold assignment (Experimental_Setup.md §6.4).
+#
+# ONE patient-level partition of the master development population per seed:
+# 5-fold OOF CV with an 85/15 early-stopping carve-out inside every fold.
+# Generated on data=colon_kras_master for each seed in {42, 43, 44}; every
+# experiment then receives a row-subset of it (phase 3
+# derive-experiment-splits), never a re-drawn assignment.
+#
+# Layout per (seed, fold i) — classic OOF k-fold, NOT nested CV:
+#   test  = fold i (outer test; never seen during training or epoch selection)
+#   val   = 15% of the remaining folds' patients (early stopping ONLY;
+#           stratified group split, seed+1000+i)
+#   train = the other 85%
+#
+# Fold assignment is StratifiedGroupKFold on strat_kras_class_cohort
+# ({SR386|TCGA} x {G12D,G12V,G13D,G12C,other_mutant,wild_type}) grouped by
+# patient — no patient ever spans folds, and every experiment's subset
+# inherits approximately balanced allele x cohort proportions.
+
+scheme: oof_kfold
+name: oofk${splits.n_folds}_seed${splits.seed}_es15_strat6c
+
+n_folds: 5
+seed: 42
+
+# Composite stratification key from crc_kras_master_dev.csv — NOT the training
+# label; training reads data.label_columns (target_label) independently.
+label_column: strat_kras_class_cohort
+
+group_column: ${data.patient_id_column}
+
+site_column: null
+
+test_filter: null
+val_filter: null
+
+train_ratio: null
+# Fraction of the k-1 training folds carved out (patient-level, stratified on
+# the same 6-class x cohort key) as the early-stopping validation split.
+val_ratio: 0.15
+test_ratio: null
+
+n_repeats: null

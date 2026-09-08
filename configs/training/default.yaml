@@ -1,0 +1,174 @@
+# ── Training hyperparameters ───────────────────────────────────────────────────
+
+# ── Optimization (standard protocol, 2026-08-18) ─────────────────────────────
+lr: 1e-4
+weight_decay: 5e-3
+lr_scheduler: cosine           # cosine | plateau | step | none
+final_lr_fraction: 0.01        # cosine anneals to peak_lr/100. A FRACTION, not an
+                               # absolute floor: with a fixed floor the arms of an
+                               # lr sweep would end at different fractions of their
+                               # own peak and the sweep would confound two things.
+warmup_epochs: 0
+max_epochs: 20
+batch_size: 1                  # one WSI bag per step
+adam_betas: [0.9, 0.999]
+adam_eps: 1e-8
+
+# ── Loss ──────────────────────────────────────────────────────────────────────
+loss_type: ce                  # ce | bce | focal. bce trains a SINGLE-logit
+                               # binary head (sigmoid path end to end).
+class_weights: null            # null = uniform; list[float] for per-class weights
+training_class_weighted_loss: false  # standard protocol trains an UNWEIGHTED loss.
+                               # true = inverse-prevalence class weights from each
+                               # TRAINING FOLD's labels.
+validation_loss_weighted: false  # the stopping/checkpoint criterion is the
+                               # UNWEIGHTED patient-level loss by design, so a
+                               # reweighting decision cannot move the stopping
+                               # point. true is rejected, not silently ignored.
+auto_class_weights: null       # legacy switch, equivalent to
+                               # training_class_weighted_loss=true; kept so frozen
+                               # study profiles reproduce exactly
+focal_gamma: 2.0               # only used if loss_type=focal
+label_smoothing: 0.0           # ce only; softens targets against overconfident probabilities
+
+# ── Data loading ──────────────────────────────────────────────────────────────
+max_instances: null            # collator cap: hard ceiling on padded tensor [B, M, D]
+                               # prevents OOM. applies to both train and val.
+dataset_max_instances: null    # dataset-level cap for every split.
+                               # train samples stochastically; eval is deterministic.
+                               # null = use all patches in train, validation, and test.
+eval_full_bags: false          # true = val/test always read ALL patches, ignoring
+                               # dataset_max_instances (train keeps the stochastic cap)
+sample_weight_column: null     # manifest column with a per-slide TRAIN loss weight
+                               # (e.g. 1/n_slides for that patient, so a
+                               # multi-block patient cannot outvote a single-slide
+                               # one). Weighted mean over the batch, so the loss
+                               # scale is unaffected. null = every slide weighs 1.
+class_weighted_sampling: false  # inverse-frequency weighted random sampling
+train_sampling_strategy: slide_uniform  # slide_uniform | patient_natural |
+                                      # cohort_balanced | cohort_label_balanced
+sampling_target_positive_prevalence: 0.4  # used only by cohort_label_balanced
+use_preallocated_collator: true
+return_coords: false
+verify_splits: true
+num_workers: null              # null = platform default; override per training workload
+prefetch_factor: null          # null = platform default
+pin_memory: null               # null = auto-detect CUDA
+persistent_workers: null       # null = enabled when num_workers > 0
+drop_last: false               # true keeps B static for fixed-bag compile throughput
+force_float32: true            # cast features to fp32 in the worker.
+                               # set false with a float16 packed store: upcasting in the
+                               # worker doubles IPC + PCIe bytes and the model casts anyway.
+
+# ── Packed feature store (off by default) ─────────────────────────────────────
+# One flat float16 memmap for the whole cohort instead of one H5 per slide.
+# Build with scripts/pack_features.py.
+# Removes h5py decode from the hot path (~40 ms/slide even from page cache) and
+# lets a subsampled bag read only the rows it selected.
+packed_dir: null               # path to the pack directory; null = read per-slide H5
+verify_packed_source: true     # refuse to train against a pack whose source H5 set changed
+resident_device: null          # null = memmap reads (default). "cuda" loads the whole pack
+                               # into VRAM once and serves device-side gathers — no workers,
+                               # no IPC, no per-step PCIe copy; the pack must fit next to the
+                               # model (CONCH ~8 GB does, UNI ~39 GB does not on 24 GB).
+                               # "cpu" holds it as one RAM tensor (no page-fault jitter).
+                               # Forces num_workers=0 and pin_memory=false. Requires packed_dir.
+
+# ── Fixed-size bags (off by default) ──────────────────────────────────────────
+# When set, every TRAIN sample is exactly this many patches, so batches are
+# uniform: no padding, no masking, static shapes (which is what makes
+# batch_size > 1 and torch.compile actually pay off).
+# This is a MODELLING change as well as a speed change — a stochastic N-patch
+# view per epoch acts as a regulariser. A/B it on one fold before adopting.
+fixed_bag_size: null           # e.g. 2048 for train
+eval_fixed_bag_size: null      # deliberately separate: keep eval on full bags
+short_bag_policy: repeat       # repeat | pad — slides with fewer patches than the bag
+eval_batch_size: null          # null = same as batch_size; >1 sorts eval by bag size
+
+# ── Step overhead ─────────────────────────────────────────────────────────────
+log_every_n_steps: 10          # logger flush cadence. 1 means a flush per optimizer
+                               # step, which at batch_size=1 is ~1 flush per slide.
+
+# ── Bag augmentation (train only) ─────────────────────────────────────────────
+instance_dropout: 0.0          # prob of dropping each patch (0 = off)
+feature_noise_std: 0.0         # Gaussian noise std added to features (0 = off)
+
+# ── Caching ───────────────────────────────────────────────────────────────────
+cache_size_mb: 0               # LRU cache per dataset (0 = disabled)
+
+# ── Bag curriculum (off by default) ───────────────────────────────────────────
+bag_curriculum: false
+bag_curriculum_start: 512
+bag_curriculum_end: 8000
+bag_curriculum_warmup: 5
+
+# ── Monitoring ────────────────────────────────────────────────────────────────
+canary_interval: 200           # run health checks every N steps (0 = off)
+collect_embeddings: true       # save slide embeddings during val/test
+
+# ── Checkpointing & early stopping ────────────────────────────────────────────
+# Standard criterion: PATIENT-LEVEL validation AUROC. Slide logits are averaged
+# within a patient before the metric, so a patient with several slides counts
+# once; the identical aggregation serves the validation loss, validation
+# AUROC/AUPRC, outer-fold test, and external inference.
+#
+# Validation LOSS is computed and logged too (val/patient_loss, unweighted) but
+# is deliberately NOT the criterion. Measured twice on this cohort, BCE diverges
+# while discrimination keeps improving — the model gets better at ranking and
+# worse at calibrated probability. On the colon RAS task that cost OOF AUROC
+# 0.59 against 0.68; on an Aim-1 transfer fold it selected the epoch-0 model
+# (patient AUROC 0.647) over epoch 5 (0.756), giving up 0.110. Patient averaging
+# does not blunt it in development, where slides and patients are ~1:1. The
+# miscalibration driving it is corrected downstream by the development-fitted
+# Platt calibrator, so it should not also drive model selection.
+monitor_metric: val/patient_auroc  # val/patient_auroc (max) | val/patient_loss (min)
+                                   # | val/auroc (max) | val/loss (min)
+monitor_mode: max
+early_stopping_patience: 5     # epochs without improvement before stopping
+early_stopping_min_delta: 0.0  # any improvement counts
+min_epoch_before_stop: 10      # floor on training length. Gates STOPPING ONLY —
+                               # checkpoint selection runs from epoch 0, so a best
+                               # epoch inside this window is still the one restored.
+es_min_val_positives: null     # small-class rule: when the val split has fewer
+                               # positive PATIENTS than this, early stopping is
+                               # disabled for the fold and training runs for
+                               # fixed_epoch_budget epochs (deploying the FINAL
+                               # epoch). null = rule off.
+fixed_epoch_budget: null       # epochs to train when the small-class rule fires
+                               # (set from the reference experiment's median
+                               # best-epoch); required once the rule triggers
+save_top_k: 1
+save_last: true
+
+# ── Spatial-stratified sampling (off by default) ─────────────────────────────
+cap_strategy: random           # random | spatial_stratified
+cap_grid_size: 32              # grid resolution for spatial_stratified
+
+# ── Length bucketing (off by default) ─────────────────────────────────────────
+length_bucket: false
+length_bucket_size: 64
+
+# ── Multi-crop evaluation (off by default) ────────────────────────────────────
+eval_n_crops: 1                # 1 = single crop, 5 = recommended for final reporting
+
+# ── Misc ──────────────────────────────────────────────────────────────────────
+compile_model: false           # torch.compile for throughput
+freeze_aggregator: false
+aggregator_weights_path: null  # optional path to pretrained aggregator .pt
+aggregator_lr: null            # differential LR for aggregator (null = use lr)
+head_lr: null                  # differential LR for classification head (null = use lr)
+deterministic: false           # torch.use_deterministic_algorithms
+seed: 42
+gradient_clip_val: 1.0
+accumulate_grad_batches: 1
+force_rerun: false             # re-run completed folds
+
+# ── Finalization (Phase 2) ────────────────────────────────────────────────────
+# Main selects the export candidate from validation only. Downstream projects
+# can opt into ensemble/refit finalization without changing the workflow API.
+skip_finalize: false           # skip Phase 2 entirely (useful for debugging)
+final_strategies:
+  - best_fold
+refit_epoch_rule: p75          # p75 | median | max | mean
+                               # how to pick refit epoch count from fold stopping points
+refit_max_steps: null          # optional exact optimizer-step budget; overrides epoch stopping

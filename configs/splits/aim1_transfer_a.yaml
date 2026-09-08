@@ -1,0 +1,38 @@
+# Aim 1 — cross-cohort transfer split, used ONLY by the hyperparameter search.
+#
+# One source subcohort trains, the other selects. This is a real domain shift,
+# not a random split: TCGA is .svs at native 0.232/0.252 um/px and ~0.5 GB per
+# slide, SR386 is .tiff at 0.250 um/px and ~3.8 GB. Tuning against it selects
+# for the thing 1A actually has to do, instead of for whichever setting best
+# fits one scanner's staining profile.
+#
+# Direction A: train TCGA (499 patients), select SR386 (410)
+#     splits=aim1_transfer splits.val_filter='subcohort == "SR386"'
+# Direction B: train SR386, select TCGA
+#     splits=aim1_transfer splits.val_filter='subcohort != "SR386"'
+#
+# There is NO test set here by construction: the search must never see an
+# outer fold or an external cohort. The empty test_filter below matches
+# nothing, which the custom_holdout scheme requires to be set explicitly.
+#
+# The 5-fold OOF run that produces every reported number uses
+# splits=aim1_balanced instead. Nothing from this file reaches a result.
+
+scheme: custom_holdout
+name: aim1_transfer_a
+
+# Matches zero rows: the search has no held-out test set.
+test_filter: 'subcohort == "__none__"'
+# Direction A: TCGA trains, SR386 selects.
+val_filter: 'subcohort == "SR386"'
+
+label_column: ${data.label_columns.0}
+group_column: ${data.patient_id_column}
+site_column: null
+
+train_ratio: null
+val_ratio: null
+test_ratio: null
+n_folds: 1
+n_repeats: null
+seed: 42

@@ -1,0 +1,39 @@
+# KRAS allele study — MASTER development population (Experimental_Setup.md §3).
+#
+# All SR386-P + TCGA-P slides with known KRAS status AND features in the
+# pinned encoder store. This manifest exists for ONE purpose: generating the
+# shared patient-level fold assignment (5 folds x 3 seeds, stratified by
+# cohort x 6-class KRAS class) that every experiment subsets. Training runs
+# never point at it directly — they use the per-experiment manifests
+# (data=colon_kras_exp data.kras_exp=<id>) plus derived split subsets.
+#
+# Built by: python phase3_make_splits.py dev-manifests --apply
+# Regenerate through that script only, never by hand.
+
+name: colon_kras_master
+
+slide_dir: ${platform.slide_root}/colon
+
+csv_path: ${platform.project_root}/manifests/colon/crc_kras_master_dev.csv
+
+feature_job_dir: ${platform.feature_root}/colon_stream
+feature_h5_dir: ${data.feature_job_dir}/${extraction.coords_subdir}/${encoder.features_subdir}
+
+custom_list_of_wsis: null
+
+# Master target_label = KRAS mutant (1) vs wild-type (0), i.e. the B1 task —
+# split STRATIFICATION uses strat_kras_class_cohort (splits config), not this.
+label_columns:
+  - target_label
+patient_id_column: patient_id
+filename_column: slide_id
+
+num_classes: 2
+class_names:
+  - wild_type
+  - mutant
+
+wsi_extensions:
+  - .svs
+  - .tif
+  - .tiff

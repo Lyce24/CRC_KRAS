@@ -1,0 +1,38 @@
+# ── Root config for: scripts/pack_features.py / phase 2 ──────────────────────
+#
+# Rewrites the per-slide H5 features published by extraction into one flat
+# float16 memmap, which is what training should read. This is a one-time cost
+# per (data, encoder, extraction) triple.
+#
+# Usage:
+#   python scripts/pack_features.py platform=local data=blca encoder=univ1
+#   python scripts/pack_features.py platform=colon_workstation data=colon encoder=univ1
+#   python scripts/pack_features.py ... pack.dtype=float32 pack.overwrite=true
+#   python scripts/pack_features.py ... dry_run=true
+#
+# Then train against it:
+#   python tools/study_train.py hydra-train ... training.packed_dir=<pack_dir> training.force_float32=false
+
+defaults:
+  - platform: local
+  - runtime: default
+  - data: aim1
+  - encoder: univ1
+  - extraction: default
+  - training: default          # supplies training.packed_dir as the destination override
+  - _self_
+
+pack:
+  dtype: float16               # float16 halves every byte moved from disk to GPU.
+                               # Patch-encoder outputs sit far inside its range;
+                               # packing verifies this and refuses non-finite input.
+  include_coords: true         # needed for spatial_stratified sampling + heatmaps
+  stream_chunk_size: 65536     # bounded read; at most ~256 MiB FP32 for UNI
+  verify_source_unchanged: true # abort if extraction publishes while packing
+  overwrite: false             # rebuild an existing pack
+
+# Destination. null derives `packed_{encoder}` next to `features_{encoder}`.
+# Set training.packed_dir to pin an explicit location.
+
+dry_run: false
+verbose: false

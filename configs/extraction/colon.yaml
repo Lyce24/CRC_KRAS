@@ -1,0 +1,19 @@
+# Colon uniform-256 spatial-sampling contract.
+#
+# Use this profile only when an analysis deliberately requires the same
+# 128-micron field of view for every encoder.  Native-model extraction should
+# use `extraction=colon_native`: UNI v1 then receives 256-pixel fields while
+# CONCH v1.5 receives its native 512-pixel fields.
+
+defaults:
+  - default
+  - _self_
+
+mag: 20
+target_mpp: 0.5
+patch_size: 256
+overlap: 0
+
+# All canonical colon inputs (.svs/.tiff) are decoded through one backend.
+reader_type: openslide
+search_nested: false

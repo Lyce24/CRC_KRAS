@@ -1,0 +1,50 @@
+# ── Root config for: scripts/export_model.py (Stage 5) ────────────────────────
+#
+# Shares the SAME config groups as train.yaml / evaluate.yaml so all paths
+# (train_dir, checkpoint paths) resolve identically.
+#
+# This stage packages a trained model into a portable, validated artifact:
+#   1. Portability validation (CPU ↔ GPU output match)
+#   2. ONNX export (cross-platform, quantization-ready)
+#   3. TorchScript export (pure-PyTorch fallback)
+#   4. Numerical validation (exported outputs match PyTorch)
+#   5. Model card (full provenance + metrics + serving contract)
+#
+# Usage:
+#   # Export the validation-selected best fold
+#   python scripts/export_model.py platform=local data=blca encoder=univ1 \
+#          splits=oof_kfold5 model=abmil training=default
+#
+#   # ONNX only, skip validation (faster, not recommended)
+#   python scripts/export_model.py ... export.formats=[onnx] export.skip_validation=true
+#
+#   # Serve the exported artifact
+#   python scripts/serve.py export.artifact_dir=artifacts/exp_abc123
+
+defaults:
+  - platform: local
+  - runtime: default
+  - data: aim1
+  - encoder: univ1
+  - extraction: default
+  - splits: oof_kfold5
+  - model: abmil
+  - training: default
+  - experiment: supervised
+  - eval: default
+  - export: default
+  - _self_
+
+# ── Experiment naming (SAME formula as train.yaml / evaluate.yaml) ───────────
+exp_name: ${experiment.name}
+
+# Number of classes is owned by the dataset/task profile.
+num_classes: ${data.num_classes}
+
+# ── Derived paths ────────────────────────────────────────────────────────────
+train_dir: null
+eval_dir: null
+
+# ── Pipeline flags ───────────────────────────────────────────────────────────
+dry_run: false
+verbose: false

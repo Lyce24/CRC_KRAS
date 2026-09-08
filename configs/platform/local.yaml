@@ -1,0 +1,34 @@
+# ── Platform: local workstation ────────────────────────────────────────────────
+#
+# Single-GPU machine for fast iteration, debugging, and small experiments.
+# All paths are relative to a local project root.
+
+name: local
+
+# ── Storage roots ────────────────────────────────────────────────────────────
+# Set OCEANPATH_ROOT once per machine, or override project_root on the CLI.
+# The HOME fallback makes config composition portable on a fresh checkout.
+project_root: ${oc.env:OCEANPATH_ROOT,${oc.env:HOME}/oceanpath-data}
+slide_root: ${platform.project_root}/slides
+feature_root: ${platform.project_root}/features
+splits_root: ${platform.project_root}/splits
+output_root: ${platform.project_root}/outputs
+
+# ── Scratch / cache (fast SSD for WSI caching during extraction) ─────────────
+scratch_root: null     # set to fast SSD path if slides are on slow NFS
+wsi_cache: null        # TRIDENT wsi_cache: copies slides to fast storage before reading
+
+# ── Compute resources ───────────────────────────────────────────────────────
+gpu: 0
+num_gpus: 1
+num_workers: 8         # DataLoader / IO workers
+precision: 32-true
+# ── Distributed (disabled for local) ────────────────────────────────────────
+# Override at the CLI for multi-GPU DDP, e.g.:
+#   torchrun --nproc_per_node=2 scripts/train.py \
+#       platform.devices=2 platform.strategy=ddp ...
+# train.py reads accelerator/devices/strategy/num_nodes from here.
+strategy: auto
+accelerator: auto
+devices: 1
+num_nodes: 1

@@ -1,0 +1,43 @@
+# Aim 1 — one trained model's development manifest (Aim1_Setup.md §4, §6).
+#
+# Parameterized over the model id:
+#     data=aim1 data.aim1_model=1a     KRAS mutant vs wild-type, all 909 patients
+#     data=aim1 data.aim1_model=1cr    MSS/pMMR + BRAF-WT restricted (745)
+#     data=aim1 data.aim1_model=1cb    covariate-balanced (overlap weighting)
+#
+# Manifests are built by tools/phase2_manifests_splits.py (1a/1cr) and
+# draft/aim1_superseded/aim1_phase6_controlled_retraining.py (1cb), each carrying the frozen
+# k_fold / val_fold_0..4 columns. Splits are NOT re-drawn here: the
+# predefined_oof_kfold scheme adopts those columns verbatim, which is what
+# makes 1A, 1C-R, and 1C-B comparable on identical patients.
+
+name: aim1_${data.aim1_model}
+
+# Model id from oceanpath.aim1.registry (1a, 1cr, 1cb).
+aim1_model: 1a
+
+slide_dir: ${platform.slide_root}/colon
+
+csv_path: ${platform.project_root}/manifests/colon/${data.manifest_stem}.csv
+# aim1_dev.csv for 1a; aim1_dev_<id>.csv for the 1C variants.
+manifest_stem: aim1_dev
+
+feature_job_dir: ${platform.feature_root}/colon_stream
+feature_h5_dir: ${data.feature_job_dir}/${extraction.coords_subdir}/${encoder.features_subdir}
+
+custom_list_of_wsis: null
+
+label_columns:
+  - target_label
+patient_id_column: patient_id
+filename_column: slide_id
+
+num_classes: 2
+class_names:
+  - wild_type
+  - mutant
+
+wsi_extensions:
+  - .svs
+  - .tif
+  - .tiff
